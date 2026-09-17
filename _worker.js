@@ -5917,6 +5917,7 @@ async function 整理成数组(内容) {
 }
 
 async function 获取优选订阅生成器数据(优选订阅生成器HOST) {
+	if (typeof 优选订阅生成器HOST !== 'string' || !优选订阅生成器HOST.trim()) return [['127.0.0.1:1234#优选订阅生成器未配置或格式无效'], ''];
 	let 优选IP = [], 其他节点LINK = '', 格式化HOST = 优选订阅生成器HOST.replace(/^sub:\/\//i, 'https://').split('#')[0].split('?')[0];
 	if (!/^https?:\/\//i.test(格式化HOST)) 格式化HOST = `https://${格式化HOST}`;
 
