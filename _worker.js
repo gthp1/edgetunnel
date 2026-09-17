@@ -205,7 +205,7 @@ export default {
 						return new Response(JSON.stringify(检测代理响应, null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
 					}
 
-					config_JSON = await 读取config_JSON(env, host, userID, UA);
+					if (访问路径 !== 'admin/init') config_JSON = await 读取config_JSON(env, host, userID, UA);
 
 					if (访问路径 === 'admin/init') {// 重置配置为默认值
 						try {
@@ -5595,6 +5595,17 @@ async function DoH查询(域名, 记录类型, DoH解析服务 = "https://cloudf
 	}
 }
 
+// 仅递归默认配置中的对象；保留已有值及未知字段，不写回 KV。
+function 回填配置(配置, 默认配置) {
+	const 是对象 = 值 => 值 !== null && typeof 值 === 'object' && !Array.isArray(值);
+	const 结果 = 是对象(配置) ? { ...配置 } : {};
+	for (const [键, 默认值] of Object.entries(默认配置)) {
+		if (是对象(默认值)) 结果[键] = 回填配置(结果[键], 默认值);
+		else if (!Object.prototype.hasOwnProperty.call(结果, 键)) 结果[键] = Array.isArray(默认值) ? [...默认值] : 默认值;
+	}
+	return 结果;
+}
+
 async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重置配置 = false) {
 	const _p = 特征码字典[0];
 	const host = hostname, Ali_DoH = "https://dns.alidns.com/dns-query", ECH_SNI = "cloudflare-ech.com", 占位符 = '{{IP:PORT}}', 初始化开始时间 = performance.now(), 默认配置JSON = {
@@ -5711,6 +5722,8 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 		console.error(`读取config_JSON出错: ${error.message}`);
 		config_JSON = 默认配置JSON;
 	}
+
+	config_JSON = 回填配置(config_JSON, 默认配置JSON);
 
 	if (!config_JSON.订阅转换配置.SUBLIST) config_JSON.订阅转换配置.SUBLIST = false;
 	if (!config_JSON.订阅转换配置.UDP) config_JSON.订阅转换配置.UDP = false;
