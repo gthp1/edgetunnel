@@ -5602,6 +5602,13 @@ function 回填配置(配置, 默认配置) {
 	for (const [键, 默认值] of Object.entries(默认配置)) {
 		if (是对象(默认值)) 结果[键] = 回填配置(结果[键], 默认值);
 		else if (!Object.prototype.hasOwnProperty.call(结果, 键)) 结果[键] = Array.isArray(默认值) ? [...默认值] : 默认值;
+		else if (typeof 默认值 === 'boolean' && typeof 结果[键] !== 'boolean') {
+			const 值 = String(结果[键]).trim().toLowerCase();
+			结果[键] = ['true', '1'].includes(值) ? true : ['false', '0'].includes(值) ? false : 默认值;
+		} else if (typeof 默认值 === 'number') {
+			const 值 = typeof 结果[键] === 'number' || (typeof 结果[键] === 'string' && 结果[键].trim()) ? Number(结果[键]) : NaN;
+			结果[键] = Number.isFinite(值) ? 值 : 默认值;
+		}
 	}
 	return 结果;
 }
@@ -5734,8 +5741,20 @@ async function 读取config_JSON(env, hostname, userID, UA = "Mozilla/5.0", 重�
 	if (typeof config_JSON.订阅转换配置.EXPAND !== 'boolean') config_JSON.订阅转换配置.EXPAND = true;
 	if (!config_JSON.gRPCUserAgent) config_JSON.gRPCUserAgent = UA;
 	config_JSON.HOST = host;
-	if (!config_JSON.HOSTS) config_JSON.HOSTS = [hostname];
-	if (env.HOST) config_JSON.HOSTS = (await 整理成数组(env.HOST)).map(h => h.toLowerCase().replace(/^https?:\/\//, '').split('/')[0].split(':')[0]);
+	// 仅规范化输出域名；认证使用的 host/hostname 保持原有选择规则。
+	const 原始HOSTS = env.HOST ? await 整理成数组(env.HOST) : (typeof config_JSON.HOSTS === 'string' ? await 整理成数组(config_JSON.HOSTS) : config_JSON.HOSTS);
+	config_JSON.HOSTS = (Array.isArray(原始HOSTS) ? 原始HOSTS : []).flatMap(值 => {
+		if (typeof 值 !== 'string' || !值.trim()) return [];
+		try {
+			const 域名 = new URL(/^https?:\/\//i.test(值.trim()) ? 值.trim() : `https://${值.trim()}`).hostname.toLowerCase();
+			return 域名 ? [域名] : [];
+		} catch { return []; }
+	});
+	if (!config_JSON.HOSTS.length) config_JSON.HOSTS = [hostname];
+	const 本地IP库 = config_JSON.优选订阅生成.本地IP库;
+	if (!Number.isInteger(本地IP库.指定端口) || (本地IP库.指定端口 !== -1 && (本地IP库.指定端口 < 1 || 本地IP库.指定端口 > 65535))) 本地IP库.指定端口 = 默认配置JSON.优选订阅生成.本地IP库.指定端口;
+	if (!Number.isSafeInteger(本地IP库.随机数量) || 本地IP库.随机数量 < 1) 本地IP库.随机数量 = 默认配置JSON.优选订阅生成.本地IP库.随机数量;
+	if (config_JSON.优选订阅生成.SUBUpdateTime <= 0) config_JSON.优选订阅生成.SUBUpdateTime = 默认配置JSON.优选订阅生成.SUBUpdateTime;
 	config_JSON.UUID = userID;
 	if (!config_JSON.随机路径) config_JSON.随机路径 = false;
 	if (!config_JSON.启用0RTT) config_JSON.启用0RTT = false;
