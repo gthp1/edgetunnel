@@ -377,7 +377,11 @@ export default {
 										} else if (地址部分.toLowerCase().includes('://')) {
 											if (元素.includes('#')) {
 												const 地址备注分离 = 元素.split('#');
-												其他节点.push(地址备注分离[0] + '#' + encodeURIComponent(decodeURIComponent(地址备注分离[1])));
+												try {
+													其他节点.push(地址备注分离[0] + '#' + encodeURIComponent(decodeURIComponent(地址备注分离[1])));
+												} catch {
+													return new Response('Invalid ADD.txt remark: malformed percent escape', { status: 400 });
+												}
 											} else 其他节点.push(元素);
 										} else {
 											if (地址部分.includes('*')) {
@@ -483,10 +487,14 @@ export default {
 								});
 						}
 
-						if (订阅类型 === 'mixed' && (!ua.includes('mozilla') || url.searchParams.has('b64') || url.searchParams.has('base64'))) 订阅内容 = btoa(订阅内容);
+						if (订阅类型 === 'mixed' && (!ua.includes('mozilla') || url.searchParams.has('b64') || url.searchParams.has('base64'))) {
+							try { 订阅内容 = btoa(订阅内容); }
+							catch { return new Response('Invalid mixed subscription: non-Latin-1 content must be URI-encoded', { status: 400 }); }
+						}
 
 						if (订阅类型 === 'singbox') {
 							订阅内容 = await Singbox订阅配置文件热补丁(订阅内容, config_JSON);
+							if (订阅内容 === null) return new Response('Sing-box subscription patch failed: invalid converter response', { status: 502 });
 							responseHeaders["content-type"] = 'application/json; charset=utf-8';
 						} else if (订阅类型 === 'clash') {
 							订阅内容 = Clash订阅配置文件热补丁(订阅内容, config_JSON);
@@ -5311,7 +5319,7 @@ async function Singbox订阅配置文件热补丁(SingBox_原始订阅内容, co
 		return JSON.stringify(config, null, 2);
 	} catch (e) {
 		console.error("Singbox热补丁执行失败:", e);
-		return JSON.stringify(JSON.parse(sb_json_text), null, 2);
+		return null;
 	}
 }
 
