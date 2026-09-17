@@ -559,6 +559,7 @@ const HPACKHuffman码长 = [
 ];
 
 function 获取叉HTTPPadding标识(yourUUID) {
+	if (typeof yourUUID !== 'string') return { 头: '', 键: '' };
 	return { 头: yourUUID.slice(1, 7), 键: '_' + yourUUID.slice(25, 31) };
 }
 
